@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useCallback } from "react";
 import { getTransactions, getBalance } from "../lib/api";
 import DashboardLayout from "./components/DashboardLayout";
 import WalletInput from "./components/WalletInput";
@@ -18,6 +19,7 @@ export default function Home() {
   const [txs, setTxs] = useState<any>({});
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [showWalletInput, setShowWalletInput] = useState(false);
   const walletInputRef = useRef<HTMLDivElement>(null);
 
@@ -25,16 +27,24 @@ export default function Home() {
     setChain(selectedChain);
     setAddress(addr);
     setLoading(true);
+    setLoadError("");
 
-    const [txData, bal] = await Promise.all([
-      getTransactions(selectedChain, addr),
-      getBalance(selectedChain, addr),
-    ]);
+    try {
+      const [txData, bal] = await Promise.all([
+        getTransactions(selectedChain, addr),
+        getBalance(selectedChain, addr),
+      ]);
 
-    setTxs(txData);
-    setBalance(bal);
-    setLoading(false);
-    setShowWalletInput(false);
+      setTxs(txData);
+      setBalance(bal);
+      setShowWalletInput(false);
+    } catch (err: any) {
+      console.error("Failed to load wallet data:", err);
+      setLoadError(err.message || "Failed to load wallet data. Please check the address and try again.");
+      setAddress("");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleConnectWallet = () => {
@@ -72,6 +82,26 @@ export default function Home() {
             </div>
           )}
 
+          {/* Error banner */}
+          {loadError && (
+            <div
+              style={{
+                background: "rgba(255, 56, 56, 0.1)",
+                color: "var(--error)",
+                padding: "var(--spacing-4)",
+                borderRadius: "var(--radius-lg)",
+                fontFamily: "var(--font-body)",
+                fontSize: "0.8125rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--spacing-3)",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>error</span>
+              <span>{loadError}</span>
+            </div>
+          )}
+
           {/* Balance Card */}
           <WalletInfo
             address={address}
@@ -103,7 +133,7 @@ export default function Home() {
           <TransactionList txs={txs} chain={chain} address={address} />
 
           {/* Vault Status */}
-          <VaultStatus />
+          <VaultStatus address={address} />
         </div>
       </div>
     </DashboardLayout>

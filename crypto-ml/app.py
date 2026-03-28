@@ -234,7 +234,7 @@ def predict_batch():
         return jsonify({'error': f'Batch prediction failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5001))
+    port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('DEBUG', 'False').lower() == 'true'
     
     logger.info(f"Starting Crypto ML API on port {port}")

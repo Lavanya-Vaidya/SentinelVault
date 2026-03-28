@@ -1,6 +1,12 @@
 "use client";
 
-export default function VaultStatus() {
+interface VaultStatusProps {
+  address?: string;
+}
+
+export default function VaultStatus({ address }: VaultStatusProps) {
+  const isConnected = !!address;
+
   return (
     <div
       className="card"
@@ -19,7 +25,7 @@ export default function VaultStatus() {
           width: 80,
           height: 80,
           borderRadius: "50%",
-          background: "var(--primary-glow)",
+          background: isConnected ? "var(--primary-glow)" : "rgba(255, 180, 0, 0.15)",
           filter: "blur(30px)",
           pointerEvents: "none",
         }}
@@ -39,7 +45,7 @@ export default function VaultStatus() {
             width: 32,
             height: 32,
             borderRadius: "50%",
-            background: "var(--tertiary-container)",
+            background: isConnected ? "var(--tertiary-container)" : "rgba(255, 180, 0, 0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -47,9 +53,9 @@ export default function VaultStatus() {
         >
           <span
             className="material-symbols-outlined"
-            style={{ fontSize: 18, color: "var(--tertiary)" }}
+            style={{ fontSize: 18, color: isConnected ? "var(--tertiary)" : "#ffb400" }}
           >
-            verified_user
+            {isConnected ? "verified_user" : "shield"}
           </span>
         </div>
         <h3
@@ -76,18 +82,26 @@ export default function VaultStatus() {
           marginBottom: "var(--spacing-4)",
         }}
       >
-        Your wallet is ready for transactions. Always verify addresses before sending funds and never share your private keys.
+        {isConnected
+          ? "Your wallet is ready for transactions. Always verify addresses before sending funds and never share your private keys."
+          : "No wallet is currently loaded. Enter a wallet address above to view your balance, transaction history, and risk analysis."}
       </p>
 
       {/* Status chips */}
       <div style={{ display: "flex", gap: "var(--spacing-3)", flexWrap: "wrap" }}>
         <div className="chip">
-          <span className="status-dot status-dot--success" />
-          <span style={{ fontWeight: 500 }}>Connected</span>
+          <span
+            className={`status-dot ${isConnected ? "status-dot--success" : "status-dot--warning"}`}
+            style={!isConnected ? { background: "#ffb400" } : undefined}
+          />
+          <span style={{ fontWeight: 500 }}>{isConnected ? "Connected" : "Disconnected"}</span>
         </div>
         <div className="chip">
-          <span className="status-dot status-dot--success" />
-          <span style={{ fontWeight: 500 }}>Ready to Send</span>
+          <span
+            className={`status-dot ${isConnected ? "status-dot--success" : "status-dot--warning"}`}
+            style={!isConnected ? { background: "#ffb400" } : undefined}
+          />
+          <span style={{ fontWeight: 500 }}>{isConnected ? "Ready to Send" : "Not Ready"}</span>
         </div>
       </div>
     </div>

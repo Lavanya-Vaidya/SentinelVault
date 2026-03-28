@@ -66,7 +66,7 @@ export default function AssetsPage() {
     // Load stored wallets
     const stored = loadWallets();
     if (stored) {
-      setAddresses(stored);
+      setAddresses(stored as unknown as Record<string, string>);
     }
 
     // Set up polling every 10 seconds
@@ -125,7 +125,8 @@ export default function AssetsPage() {
 
     try {
       const balance = await getBalance(chain, address);
-      const usdValue = balance * (exchangeRates?.[chain] || 0);
+      const rate = (exchangeRates as any)?.[chain] || 0;
+      const usdValue = balance * rate;
 
       setAssets((prev) => ({
         ...prev,
@@ -526,6 +527,7 @@ export default function AssetsPage() {
           {CHAINS.map((chain) => {
             const asset = assets[chain];
             const usdValue = totalValue[chain];
+            const rate = (exchangeRates as any)?.[chain] || 0;
 
             return (
               <div
@@ -615,7 +617,7 @@ export default function AssetsPage() {
                       <div>
                         <p style={{ color: "var(--text-muted)", margin: "0 0 0.25rem 0" }}>Price</p>
                         <p style={{ color: "var(--text-primary)", fontWeight: 600, margin: 0 }}>
-                          ${(exchangeRates?.[chain] || 0).toLocaleString()}
+                          ${rate.toLocaleString()}
                         </p>
                       </div>
                       <div style={{ gridColumn: "1 / -1" }}>
@@ -663,7 +665,7 @@ export default function AssetsPage() {
                       margin: 0,
                     }}
                   >
-                    ${(exchangeRates?.[chain] || 0).toLocaleString()}
+                    ${rate.toLocaleString()}
                   </p>
                 </div>
 

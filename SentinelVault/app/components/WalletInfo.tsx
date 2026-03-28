@@ -18,8 +18,11 @@ const CHAIN_ICON: Record<string, string> = {
 export default function WalletInfo({ address, balance, txCount, chain }: any) {
   const [rates, setRates] = useState<ExchangeRates | null>(null);
   const [usd, setUsd] = useState("0.00");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (!address) return; // Don't poll rates if no wallet is loaded
+
     const loadRates = async () => {
       const liveRates = await getExchangeRates();
       setRates(liveRates);
@@ -32,7 +35,7 @@ export default function WalletInfo({ address, balance, txCount, chain }: any) {
     loadRates();
     const interval = setInterval(loadRates, 10000); // Update every 10 seconds
     return () => clearInterval(interval);
-  }, [balance, chain]);
+  }, [address, balance, chain]);
 
   if (!address) return null;
 
@@ -132,8 +135,18 @@ export default function WalletInfo({ address, balance, txCount, chain }: any) {
           >
             {address.slice(0, 8)}...{address.slice(-4)}
           </span>
-          <span className="material-symbols-outlined" style={{ fontSize: 14, color: "var(--primary)", cursor: "pointer" }}>
-            content_copy
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: 14, color: copied ? "var(--tertiary)" : "var(--primary)", cursor: "pointer", transition: "color 0.2s ease" }}
+            onClick={() => {
+              navigator.clipboard.writeText(address).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              });
+            }}
+            title="Copy address"
+          >
+            {copied ? "check" : "content_copy"}
           </span>
         </div>
 
