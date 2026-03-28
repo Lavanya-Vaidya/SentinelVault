@@ -103,16 +103,48 @@ class ChainlinkLog(BaseModel):
 
 # Global storage for logs (in production, use a database)
 risk_logs: List[ChainlinkLog] = []
+TRANSACTION_CACHE_TTL_SECONDS = int(os.environ.get('TRANSACTION_CACHE_TTL_SECONDS', '60'))
+transaction_cache: Dict[str, Dict[str, Any]] = {}
+
+
+class RiskProbabilities(BaseModel):
+    legitimate: float
+    fraud: float
+
+
+class CombinedRisk(BaseModel):
+    risk_score: float = Field(..., ge=0, le=100)
+    risk_level: str
+    recommendation: str
+
+
+class TransactionRiskResponse(RiskPrediction):
+    combined_risk: CombinedRisk
+    sender_risk: RiskPrediction
+    recipient_risk: RiskPrediction
 
 def get_wallet_transactions(address: str) -> List[Dict]:
     """Fetch transaction data for an Ethereum or Bitcoin address"""
+    normalized_address = (address or "").strip().lower()
+    now = time.time()
+
+    cached_entry = transaction_cache.get(normalized_address)
+    if cached_entry and cached_entry["expires_at"] > now:
+        return cached_entry["transactions"]
+
     try:
         # Check if it's a Bitcoin address
         if address.startswith(('1', '3', 'bc1')):
-            return get_bitcoin_transactions(address)
+            transactions = get_bitcoin_transactions(address)
         # Otherwise, treat as Ethereum address
         else:
-            return get_ethereum_transactions(address)
+            transactions = get_ethereum_transactions(address)
+
+        transaction_cache[normalized_address] = {
+            "transactions": transactions,
+            "expires_at": now + TRANSACTION_CACHE_TTL_SECONDS,
+        }
+        return transactions
     except Exception as e:
         logger.error(f"Error fetching transactions for {address}: {e}")
         return []
@@ -410,7 +442,7 @@ async def predict_risk_from_features(features: RiskFeatures):
         logger.error(f"Feature prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
-@app.post("/predict_transaction", response_model=RiskPrediction, tags=["Prediction"])
+@app.post("/predict_transaction", response_model=TransactionRiskResponse, tags=["Prediction"])
 async def predict_transaction_risk(transaction: TransactionRequest, background_tasks: BackgroundTasks):
     """Predict risk for a complete transaction (sender + recipient)"""
     try:
@@ -463,11 +495,29 @@ async def predict_transaction_risk(transaction: TransactionRequest, background_t
             timestamp=datetime.now().isoformat(),
             transaction_id=transaction.transaction_hash
         )
+
+        recommendation = "safe" if risk_level == "low" else "caution" if risk_level == "medium" else "risky"
+        response_payload = TransactionRiskResponse(
+            risk_score=final_prediction.risk_score,
+            risk_level=final_prediction.risk_level,
+            is_fraud=final_prediction.is_fraud,
+            confidence=final_prediction.confidence,
+            probabilities=final_prediction.probabilities,
+            timestamp=final_prediction.timestamp,
+            transaction_id=final_prediction.transaction_id,
+            combined_risk=CombinedRisk(
+                risk_score=final_prediction.risk_score,
+                risk_level=final_prediction.risk_level,
+                recommendation=recommendation,
+            ),
+            sender_risk=sender_prediction,
+            recipient_risk=recipient_prediction,
+        )
         
         # Log to Chainlink in background
         background_tasks.add_task(log_to_chainlink, transaction.transaction_hash or f"tx_{int(time.time())}", final_prediction)
         
-        return final_prediction
+        return response_payload
         
     except Exception as e:
         logger.error(f"Transaction prediction error: {e}")

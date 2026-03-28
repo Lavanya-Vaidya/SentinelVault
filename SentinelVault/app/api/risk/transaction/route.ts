@@ -68,24 +68,11 @@ export async function POST(request: NextRequest) {
       transaction_hash: transactionHash,
     };
     
-    // Get individual address predictions for better analysis
-    const [senderResponse, recipientResponse, transactionResponse] = await Promise.all([
-      fetch(`${CRYPTO_ML_API_URL}/predict_address`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: body.sender }),
-      }),
-      fetch(`${CRYPTO_ML_API_URL}/predict_address`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: body.recipient }),
-      }),
-      fetch(`${CRYPTO_ML_API_URL}/predict_transaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transactionRequest),
-      }),
-    ]);
+    const transactionResponse = await fetch(`${CRYPTO_ML_API_URL}/predict_transaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(transactionRequest),
+    });
 
     // Check all responses
     if (!transactionResponse.ok) {
@@ -98,17 +85,8 @@ export async function POST(request: NextRequest) {
 
     const transactionData: RiskPayload = await transactionResponse.json();
     
-    // Get individual predictions (use fallback if they fail)
-    let senderData: RiskPayload = transactionData.sender_risk || transactionData;
-    let recipientData: RiskPayload = transactionData.recipient_risk || transactionData;
-    
-    if (senderResponse.ok) {
-      senderData = await senderResponse.json();
-    }
-    
-    if (recipientResponse.ok) {
-      recipientData = await recipientResponse.json();
-    }
+    const senderData: RiskPayload = transactionData.sender_risk || transactionData;
+    const recipientData: RiskPayload = transactionData.recipient_risk || transactionData;
 
     const chainlinkStatus = await confirmChainlinkLog(transactionHash);
     
