@@ -57,6 +57,8 @@ venv/
 # Datasets are usually very large and only needed for local training
 crypto-ml/transaction_dataset.csv
 
+# Ignore massive PKL files that break GitHub limits (download in prod instead)
+crypto-ml/crypto_model_improved.pkl
 # Temporary evaluation and local tuning scripts
 crypto-ml/evaluation_results.txt
 crypto-ml/temp_evaluate.py

@@ -86,11 +86,11 @@ export default function WalletInfo({ address, balance, txCount, chain }: any) {
       </p>
 
       {/* Balance number */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: "var(--spacing-2)", marginBottom: "var(--spacing-1)" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "var(--spacing-2)", marginBottom: "var(--spacing-1)", flexWrap: "wrap", wordBreak: "break-word" }}>
         <span
           style={{
             fontFamily: "var(--font-headline)",
-            fontSize: "2.5rem",
+            fontSize: "clamp(2rem, 8vw, 2.5rem)",
             fontWeight: 800,
             color: "var(--text-primary)",
             letterSpacing: "-0.03em",
@@ -102,7 +102,7 @@ export default function WalletInfo({ address, balance, txCount, chain }: any) {
         <span
           style={{
             fontFamily: "var(--font-headline)",
-            fontSize: "1.25rem",
+            fontSize: "clamp(1rem, 4vw, 1.25rem)",
             fontWeight: 700,
             color: "var(--primary)",
           }}

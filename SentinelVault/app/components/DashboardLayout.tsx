@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
 
@@ -10,26 +11,38 @@ interface DashboardLayoutProps {
   onConnectWallet?: () => void;
 }
 
+const NAV_ITEMS = [
+  { icon: "dashboard",        label: "Home",          href: "/" },
+  { icon: "account_balance",  label: "Assets",        href: "/assets" },
+  { icon: "receipt_long",     label: "History",       href: "/transactions" },
+  { icon: "verified_user",    label: "Security",      href: "/security" },
+];
+
 export default function DashboardLayout({ children, onConnectWallet }: DashboardLayoutProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const [theme, setTheme] = useState("dark");
 
-  // Close mobile menu when route changes
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
-  // Prevent scrolling when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
+    // Check if the user has a theme preference saved
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute("data-theme", savedTheme);
     } else {
-      document.body.style.overflow = "auto";
+      const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+      if (prefersLight) {
+        setTheme("light");
+        document.documentElement.setAttribute("data-theme", "light");
+      }
     }
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isMobileMenuOpen]);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    localStorage.setItem("theme", nextTheme);
+  };
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-base)" }}>
@@ -41,7 +54,6 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
           bottom: 0;
           width: 240px;
           z-index: 100;
-          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .dashboard-main {
@@ -50,25 +62,16 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
           display: flex;
           flex-direction: column;
           min-height: 100vh;
-          transition: filter 0.3s ease;
-        }
-
-        .dashboard-overlay {
-          display: none;
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(4px);
-          z-index: 90;
-          transition: opacity 0.3s ease;
         }
 
         .mobile-header {
           display: none;
           align-items: center;
           justify-content: space-between;
-          padding: 0.875rem 1.25rem;
-          background: var(--bg-surface-lowest);
+          padding: 0.875rem var(--spacing-4);
+          background: rgba(var(--bg-surface-lowest-rgb, 11, 14, 20), 0.75);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid var(--ghost-border);
           position: sticky;
           top: 0;
@@ -82,14 +85,24 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
           min-height: 56px;
         }
 
+        .bottom-nav {
+          display: none;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 72px;
+          background: rgba(29, 32, 38, 0.85); /* Matches surface-container roughly */
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border-top: 1px solid var(--ghost-border);
+          z-index: 50;
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+
         @media (max-width: 768px) {
           .dashboard-sidebar {
-            transform: translateX(-100%);
-            box-shadow: none;
-          }
-          .dashboard-sidebar.open {
-            transform: translateX(0);
-            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+            display: none !important;
           }
           .dashboard-main {
             margin-left: 0 !important;
@@ -97,26 +110,22 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
           .dashboard-main main {
             padding: var(--spacing-4) !important;
           }
-          .dashboard-overlay.open {
-            display: block;
-          }
           .mobile-header {
             display: flex;
           }
           .desktop-header {
             display: none !important;
           }
+          .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+          }
         }
       `}</style>
-      
-      {/* Mobile Overlay */}
-      <div 
-        className={`dashboard-overlay ${isMobileMenuOpen ? "open" : ""}`}
-        onClick={() => setIsMobileMenuOpen(false)}
-      />
 
-      {/* Sidebar */}
-      <div className={`dashboard-sidebar ${isMobileMenuOpen ? "open" : ""}`}>
+      {/* Sidebar (Desktop Only) */}
+      <div className="dashboard-sidebar">
         <Sidebar onConnectWallet={onConnectWallet} />
       </div>
 
@@ -157,7 +166,7 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
           </div>
 
           <button
-            onClick={() => setIsMobileMenuOpen(true)}
+            onClick={toggleTheme}
             style={{
               background: "transparent",
               border: "none",
@@ -169,8 +178,8 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
               cursor: "pointer",
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 28 }}>
-              menu
+            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
+              {theme === "dark" ? "light_mode" : "dark_mode"}
             </span>
           </button>
         </header>
@@ -200,6 +209,51 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
         </main>
 
         <StatusBar />
+        
+        {/* Bottom Nav (Mobile Only) */}
+        <nav className="bottom-nav">
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  width: "25%",
+                  height: "100%",
+                  color: isActive ? "var(--primary)" : "var(--text-muted)",
+                  textDecoration: "none",
+                }}
+              >
+                <span 
+                  className="material-symbols-outlined" 
+                  style={{ 
+                    fontSize: 24,
+                    fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" 
+                  }}
+                >
+                  {item.icon}
+                </span>
+                <span 
+                  style={{ 
+                    fontFamily: "var(--font-label)", 
+                    fontSize: "0.625rem", 
+                    fontWeight: isActive ? 600 : 500,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em"
+                  }}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );

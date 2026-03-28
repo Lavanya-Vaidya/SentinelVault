@@ -11,8 +11,6 @@ import ScanAndBroadcast from "./components/ScanAndBroadcast";
 import TransactionList from "./components/TransactionList";
 import PortfolioHealth from "./components/PortfolioHealth";
 import VaultStatus from "./components/VaultStatus";
-import RiskAnalysis from "./components/RiskAnalysis";
-
 export default function Home() {
   const [chain, setChain] = useState("ethereum");
   const [address, setAddress] = useState("");
@@ -67,9 +65,10 @@ export default function Home() {
         className="responsive-grid"
       >
         <style>{`
-          @media (max-width: 1024px) {
+          @media (max-width: 768px) {
             .responsive-grid {
               grid-template-columns: 1fr !important;
+              gap: var(--spacing-4) !important;
             }
           }
         `}</style>
@@ -119,13 +118,6 @@ export default function Home() {
 
         {/* ── Right Column ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-6)" }}>
-          {/* Risk Analysis */}
-          <RiskAnalysis 
-            address={address} 
-            transactions={txs.normal || []} 
-            chain={chain} 
-          />
-
           {/* Portfolio Health */}
           <PortfolioHealth />
 

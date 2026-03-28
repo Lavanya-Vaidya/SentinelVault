@@ -142,6 +142,9 @@ export default function CreateTransaction({ chain: parentChain, sender }: Props)
       const data = await response.json();
       setRiskAnalysis(data);
       setShowRiskWarning((data.combined_risk?.risk_score || 0) >= HIGH_RISK_THRESHOLD);
+      if ((data.combined_risk?.risk_score || 0) >= BLOCKING_RISK_THRESHOLD) {
+        setShowHighRiskModal(true);
+      }
       setChainlinkStatus({
         state: data.chainlink?.logged ? "logged" : data.chainlink?.transaction_hash ? "pending" : "idle",
         transactionHash: data.chainlink?.transaction_hash || null,
@@ -244,7 +247,7 @@ export default function CreateTransaction({ chain: parentChain, sender }: Props)
     const pollLogs = async () => {
       try {
         const response = await fetch(
-          `/api/risk/logs?transaction_hash=${encodeURIComponent(chainlinkStatus.transactionHash)}&limit=20`
+          `/api/risk/logs?transaction_hash=${encodeURIComponent(chainlinkStatus.transactionHash || "")}&limit=20`
         );
 
         if (!response.ok) {

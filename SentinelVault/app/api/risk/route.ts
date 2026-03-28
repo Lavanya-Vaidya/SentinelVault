@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const CRYPTO_ML_API_URL = process.env.CRYPTO_ML_API_URL || 'http://localhost:5000';
+const CRYPTO_ML_API_URL = process.env.CRYPTO_ML_API_URL || 'http://localhost:8000';
 
 export async function POST(request: NextRequest) {
   try {
