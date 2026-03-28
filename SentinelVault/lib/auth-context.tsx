@@ -45,7 +45,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_CRYPTO_ML_API_URL || 'http://localhost:8000';
+      let baseUrl = process.env.NEXT_PUBLIC_CRYPTO_ML_API_URL || 'http://localhost:8000';
+      baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
       const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -78,7 +79,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     passwordConfirm: string
   ) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_CRYPTO_ML_API_URL || 'http://localhost:8000';
+      let baseUrl = process.env.NEXT_PUBLIC_CRYPTO_ML_API_URL || 'http://localhost:8000';
+      baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
       const response = await fetch(`${baseUrl}/api/auth/signup`, {
         method: 'POST',
         headers: {
