@@ -10,6 +10,7 @@ import type { FeeSpeed } from "../../lib/env";
 interface Props {
   chain: string;
   sender?: string;
+  chainLocked?: boolean;
 }
 
 interface TransactionRiskAnalysis {
@@ -69,7 +70,7 @@ const SPEED_LABELS: Record<FeeSpeed, string> = {
 const HIGH_RISK_THRESHOLD = 70;
 const BLOCKING_RISK_THRESHOLD = 90;
 
-export default function CreateTransaction({ chain: parentChain, sender }: Props) {
+export default function CreateTransaction({ chain: parentChain, sender, chainLocked = false }: Props) {
   const [chain, setChain] = useState(parentChain || "ethereum");
   const [from, setFrom] = useState(sender || "");
   const [to, setTo] = useState("");
@@ -92,12 +93,18 @@ export default function CreateTransaction({ chain: parentChain, sender }: Props)
     message: "",
   });
 
-  // Update from address when sender prop changes
+  // Update from address and chain when props change
   useEffect(() => {
     if (sender) {
       setFrom(sender);
     }
   }, [sender]);
+
+  useEffect(() => {
+    if (parentChain) {
+      setChain(parentChain);
+    }
+  }, [parentChain]);
 
   const amountPlaceholder =
     chain === "bitcoin"
@@ -445,17 +452,19 @@ export default function CreateTransaction({ chain: parentChain, sender }: Props)
             id="tx-chain"
             name="chain"
             value={chain}
-            onChange={(e) => setChain(e.target.value)}
+            onChange={(e) => !chainLocked && setChain(e.target.value)}
+            disabled={chainLocked}
             style={{
               width: "100%",
-              background: "var(--bg-surface-lowest)",
-              border: "1px solid var(--ghost-border)",
+              background: chainLocked ? "var(--bg-surface)" : "var(--bg-surface-lowest)",
+              border: `1px solid ${chainLocked ? "var(--primary)" : "var(--ghost-border)"}`,
               borderRadius: "var(--radius-lg)",
               padding: "0.625rem 1rem",
               color: "var(--text-primary)",
               fontFamily: "var(--font-label)",
               fontSize: "0.8125rem",
-              cursor: "pointer",
+              cursor: chainLocked ? "not-allowed" : "pointer",
+              opacity: chainLocked ? 0.75 : 1,
             }}
           >
             {Object.entries(chains).map(([key, val]) => (
@@ -464,6 +473,22 @@ export default function CreateTransaction({ chain: parentChain, sender }: Props)
               </option>
             ))}
           </select>
+          {chainLocked && (
+            <span
+              className="material-symbols-outlined"
+              style={{
+                position: "absolute",
+                right: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontSize: 16,
+                color: "var(--primary)",
+                pointerEvents: "none",
+              }}
+            >
+              lock
+            </span>
+          )}
         </div>
       </div>
 
@@ -549,19 +574,38 @@ export default function CreateTransaction({ chain: parentChain, sender }: Props)
             name="from-address"
             placeholder="Enter your address..."
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={(e) => !chainLocked && setFrom(e.target.value)}
+            readOnly={chainLocked}
             style={{
               width: "100%",
-              background: "var(--bg-surface-lowest)",
-              border: "1px solid var(--ghost-border)",
+              background: chainLocked ? "var(--bg-surface)" : "var(--bg-surface-lowest)",
+              border: `1px solid ${chainLocked ? "var(--primary)" : "var(--ghost-border)"}`,
               borderRadius: "var(--radius-lg)",
               padding: "0.625rem 1rem",
+              paddingRight: chainLocked ? "2.5rem" : "1rem",
               fontFamily: "var(--font-body)",
               fontSize: "0.875rem",
               color: "var(--text-primary)",
-              cursor: "text",
+              cursor: chainLocked ? "not-allowed" : "text",
+              opacity: chainLocked ? 0.75 : 1,
             }}
           />
+          {chainLocked && (
+            <span
+              className="material-symbols-outlined"
+              style={{
+                position: "absolute",
+                right: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontSize: 16,
+                color: "var(--primary)",
+                pointerEvents: "none",
+              }}
+            >
+              lock
+            </span>
+          )}
         </div>
       </div>
 

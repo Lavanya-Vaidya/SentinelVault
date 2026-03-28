@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
+import { useAuth } from "@/lib/auth-context";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,7 +21,10 @@ const NAV_ITEMS = [
 
 export default function DashboardLayout({ children, onConnectWallet }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const [theme, setTheme] = useState("dark");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Check if the user has a theme preference saved
@@ -42,6 +46,12 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
     setTheme(nextTheme);
     document.documentElement.setAttribute("data-theme", nextTheme);
     localStorage.setItem("theme", nextTheme);
+  };
+
+  const handleMobileLogout = () => {
+    setMobileMenuOpen(false);
+    logout();
+    router.push("/login");
   };
 
   return (
@@ -100,6 +110,24 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
           padding-bottom: env(safe-area-inset-bottom);
         }
 
+        .mobile-user-dropdown {
+          display: none;
+          position: absolute;
+          top: 100%;
+          right: 0;
+          left: 0;
+          background: var(--bg-surface-lowest);
+          border-bottom: 1px solid var(--ghost-border);
+          padding: var(--spacing-3) var(--spacing-4);
+          z-index: 39;
+          animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
         @media (max-width: 768px) {
           .dashboard-sidebar {
             display: none !important;
@@ -121,6 +149,9 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
             justify-content: space-around;
             align-items: center;
           }
+          .mobile-user-dropdown.open {
+            display: block;
+          }
         }
       `}</style>
 
@@ -133,7 +164,7 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
       <div className="dashboard-main">
         
         {/* Mobile Header (Only visible on mobile) */}
-        <header className="mobile-header">
+        <header className="mobile-header" style={{ position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-3)" }}>
             <div
               style={{
@@ -165,23 +196,115 @@ export default function DashboardLayout({ children, onConnectWallet }: Dashboard
             </h1>
           </div>
 
-          <button
-            onClick={toggleTheme}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--text-primary)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0.5rem",
-              cursor: "pointer",
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
-              {theme === "dark" ? "light_mode" : "dark_mode"}
-            </span>
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-2)" }}>
+            <button
+              onClick={toggleTheme}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-primary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.5rem",
+                cursor: "pointer",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
+                {theme === "dark" ? "light_mode" : "dark_mode"}
+              </span>
+            </button>
+
+            {/* Mobile user menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={{
+                background: mobileMenuOpen ? "var(--primary-container)" : "transparent",
+                border: "none",
+                color: mobileMenuOpen ? "var(--primary)" : "var(--text-primary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.5rem",
+                cursor: "pointer",
+                borderRadius: "var(--radius-md)",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
+                {mobileMenuOpen ? "close" : "person"}
+              </span>
+            </button>
+          </div>
+
+          {/* Mobile user dropdown */}
+          <div className={`mobile-user-dropdown ${mobileMenuOpen ? "open" : ""}`}>
+            {user && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "var(--spacing-3)",
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--text-muted)",
+                      margin: 0,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Logged in as
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "var(--primary)",
+                      fontWeight: 600,
+                      margin: "0.125rem 0 0 0",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={user.email}
+                  >
+                    {user.email}
+                  </p>
+                </div>
+                <button
+                  onClick={handleMobileLogout}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--spacing-2)",
+                    padding: "0.5rem 0.875rem",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--error)",
+                    background: "rgba(255, 56, 56, 0.1)",
+                    color: "var(--error)",
+                    fontFamily: "var(--font-label)",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 16 }}
+                  >
+                    logout
+                  </span>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Desktop Header (Only visible on desktop) */}

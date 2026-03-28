@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getTransactions, getBalance } from "../lib/api";
+import { detectWalletChain } from "../lib/wallet-detection";
 import DashboardLayout from "./components/DashboardLayout";
 import WalletInput from "./components/WalletInput";
 import WalletInfo from "./components/WalletInfo";
@@ -15,7 +16,7 @@ import VaultStatus from "./components/VaultStatus";
 
 export default function Home() {
   const router = useRouter();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   // State declarations
   const [chain, setChain] = useState("ethereum");
@@ -24,7 +25,9 @@ export default function Home() {
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [chainLocked, setChainLocked] = useState(false);
   const walletInputRef = useRef<HTMLDivElement>(null);
+  const hasAutoLoaded = useRef(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -32,6 +35,24 @@ export default function Home() {
       router.push("/login");
     }
   }, [isAuthenticated, authLoading, router]);
+
+  // Auto-load wallet from user's public_key on login
+  useEffect(() => {
+    if (
+      !authLoading &&
+      isAuthenticated &&
+      user?.public_key &&
+      !hasAutoLoaded.current &&
+      !address
+    ) {
+      hasAutoLoaded.current = true;
+      const walletInfo = detectWalletChain(user.public_key);
+
+      if (walletInfo.isValid) {
+        handleLoad(walletInfo.chain, walletInfo.address, true);
+      }
+    }
+  }, [authLoading, isAuthenticated, user]);
 
   // Show loading while checking auth
   if (authLoading) {
@@ -51,11 +72,16 @@ export default function Home() {
   }
 
   // Handle wallet loading
-  const handleLoad = async (selectedChain: string, addr: string) => {
+  const handleLoad = async (
+    selectedChain: string,
+    addr: string,
+    lockChain: boolean = false
+  ) => {
     setChain(selectedChain);
     setAddress(addr);
     setLoading(true);
     setLoadError("");
+    setChainLocked(lockChain);
 
     try {
       const [txData, bal] = await Promise.all([
@@ -67,8 +93,12 @@ export default function Home() {
       setBalance(bal);
     } catch (err: any) {
       console.error("Failed to load wallet data:", err);
-      setLoadError(err.message || "Failed to load wallet data. Please check the address and try again.");
+      setLoadError(
+        err.message ||
+          "Failed to load wallet data. Please check the address and try again."
+      );
       setAddress("");
+      setChainLocked(false);
     } finally {
       setLoading(false);
     }
@@ -76,7 +106,10 @@ export default function Home() {
 
   const handleConnectWallet = () => {
     setTimeout(() => {
-      walletInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      walletInputRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }, 100);
   };
 
@@ -100,11 +133,17 @@ export default function Home() {
           }
         `}</style>
         {/* ── Left Column ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-6)" }}>
-          {/* Wallet Input */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--spacing-6)",
+          }}
+        >
+          {/* Wallet Input - only show if no wallet is loaded */}
           {!address && (
             <div ref={walletInputRef} className="animate-fade-in">
-              <WalletInput onSubmit={handleLoad} loading={loading} />
+              <WalletInput onSubmit={(c: string, a: string) => handleLoad(c, a, true)} loading={loading} />
             </div>
           )}
 
@@ -123,7 +162,10 @@ export default function Home() {
                 gap: "var(--spacing-3)",
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 20 }}
+              >
                 error
               </span>
               <span>{loadError}</span>
@@ -138,15 +180,25 @@ export default function Home() {
             chain={chain}
           />
 
-          {/* Initiate Transfer */}
-          <CreateTransaction chain={chain} sender={address} />
+          {/* Initiate Transfer – chain and from address are locked */}
+          <CreateTransaction
+            chain={chain}
+            sender={address}
+            chainLocked={chainLocked}
+          />
 
           {/* Broadcast Signed TX */}
           <ScanAndBroadcast />
         </div>
 
         {/* ── Right Column ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-6)" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--spacing-6)",
+          }}
+        >
           {/* Portfolio Health */}
           <PortfolioHealth />
 
