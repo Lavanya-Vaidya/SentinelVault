@@ -1,0 +1,93 @@
+#include <ESP32QRCodeReader.h>
+
+// ===== UART =====
+#define UART_RX 13
+#define UART_TX 14
+
+// ===== LED =====
+#define LED_PIN 4
+
+ESP32QRCodeReader reader(CAMERA_MODEL_AI_THINKER);
+
+String uartLine = "";
+bool scanEnabled = false;
+bool sent = false;
+
+unsigned long lastBlink = 0;
+bool ledOn = false;
+
+void setup() {
+  Serial.begin(115200);
+  Serial1.begin(115200, SERIAL_8N1, UART_RX, UART_TX);
+
+  pinMode(LED_PIN, OUTPUT);
+
+  reader.setup();
+  reader.begin();
+
+  Serial.println("CAM READY");
+}
+
+// ===== COMMAND =====
+void readCommands() {
+  while (Serial1.available()) {
+    char c = Serial1.read();
+
+    if (c == '\n') {
+      uartLine.trim();
+
+      if (uartLine == "SCAN") {
+        scanEnabled = true;
+        sent = false;
+
+        Serial1.println("ACK");
+        Serial1.flush();
+
+        Serial.println("SCAN → ACK");
+      }
+
+      uartLine = "";
+    } else if (c != '\r') {
+      uartLine += c;
+    }
+  }
+}
+
+// ===== LOOP =====
+void loop() {
+  readCommands();
+
+  if (!scanEnabled) {
+    digitalWrite(LED_PIN, LOW);
+    return;
+  }
+
+  struct QRCodeData qr;
+
+  if (reader.receiveQrCode(&qr, 50)) {
+    if (qr.valid && !sent) {
+
+      String payload = String((const char*)qr.payload);
+      payload.trim();
+
+      Serial.println("QR DETECTED");
+      Serial.println(payload);
+
+      // send structured data
+      Serial1.println("QR_START");
+      Serial1.println(payload);
+      Serial1.println("QR_END");
+      Serial1.flush();
+
+      sent = true;
+      scanEnabled = false;
+    }
+  }
+
+  // slow blink
+  if (millis() - lastBlink > 500) {
+    ledOn = !ledOn;
+    digitalWrite(LED_PIN, ledOn);
+    lastBlink = millis();
+  }
+}
